@@ -1,6 +1,7 @@
 // based on: https://medium.com/@ProGM/show-a-draggable-point-into-the-scene-linked-to-a-vector3-field-using-the-handle-api-in-unity-bffc1a98271d
 
 
+using System;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -15,24 +16,33 @@ public class DraggableAttribute : PropertyAttribute
 [CustomEditor(typeof(MonoBehaviour), true)]
 public class DraggablePointDrawer : Editor
 {
-    private SerializedObject obj;
+    private SerializedObject serObj;
+    private Type targetType;
+    
+    private void OnEnable()
+    {
+        serObj = new SerializedObject(target); // unity hit an error if we use Editor's serialzedObject property
+        targetType = serObj.targetObject.GetType();
+    }
 
     private void OnSceneGUI()
     {
-        obj = new SerializedObject(target);
-        var property = obj.GetIterator();
-        var type = obj.targetObject.GetType();
-
+        var property = serObj.GetIterator();
+        
+        var needApply = false;
+        
         while (property.Next(true))
         {
-            var check = false;
+            var isArray = false;
 
             if (property.isArray && property.arraySize > 0)
-                check = property.GetArrayElementAtIndex(0).propertyType == SerializedPropertyType.Vector3;
+                isArray = property.GetArrayElementAtIndex(0).propertyType == SerializedPropertyType.Vector3;
 
-            if (property.propertyType == SerializedPropertyType.Vector3 || check)
+            if (property.propertyType == SerializedPropertyType.Vector3 || isArray)
             {
-                var field = GetFieldViaPath(type, property.propertyPath);
+                needApply = true;
+                
+                var field = GetFieldViaPath(targetType, property.propertyPath);
 
                 if (field == null)
                 {
@@ -58,18 +68,22 @@ public class DraggablePointDrawer : Editor
                         property.vector3Value = Handles.PositionHandle(property.vector3Value, Quaternion.identity);
                     }
 
-                    obj.ApplyModifiedProperties();
                 }
             }
         }
+
+        if (needApply)
+            serObj.ApplyModifiedProperties();
     }
 
-    public static System.Reflection.FieldInfo GetFieldViaPath(System.Type type, string path)
+    public static System.Reflection.FieldInfo GetFieldViaPath(Type type, string path)
     {
-        System.Type parentType = type;
-        System.Reflection.FieldInfo fi = type.GetField(path);
-        string[] perDot = path.Split('.');
-        foreach (string fieldName in perDot)
+        var parentType = type;
+        var fi = type.GetField(path);
+        
+        var perDot = path.Split('.');
+        
+        foreach (var fieldName in perDot)
         {
             fi = parentType.GetField(fieldName);
             if (fi != null)
@@ -78,10 +92,7 @@ public class DraggablePointDrawer : Editor
                 return null;
         }
 
-        if (fi != null)
-            return fi;
-
-        return null;
+        return fi;
     }
 }
 #endif
