@@ -1,0 +1,87 @@
+// based on: https://medium.com/@ProGM/show-a-draggable-point-into-the-scene-linked-to-a-vector3-field-using-the-handle-api-in-unity-bffc1a98271d
+
+
+using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+
+#endif
+
+public class DraggableAttribute : PropertyAttribute
+{
+}
+
+#if UNITY_EDITOR
+[CustomEditor(typeof(MonoBehaviour), true)]
+public class DraggablePointDrawer : Editor
+{
+    private SerializedObject obj;
+
+    private void OnSceneGUI()
+    {
+        obj = new SerializedObject(target);
+        var property = obj.GetIterator();
+        var type = obj.targetObject.GetType();
+
+        while (property.Next(true))
+        {
+            var check = false;
+
+            if (property.isArray && property.arraySize > 0)
+                check = property.GetArrayElementAtIndex(0).propertyType == SerializedPropertyType.Vector3;
+
+            if (property.propertyType == SerializedPropertyType.Vector3 || check)
+            {
+                var field = GetFieldViaPath(type, property.propertyPath);
+
+                if (field == null)
+                {
+                    continue;
+                }
+
+                var draggablePoints = field.GetCustomAttributes(typeof(DraggableAttribute), false);
+
+                if (draggablePoints.Length > 0)
+                {
+                    if (property.isArray)
+                    {
+                        for (int i = 0; i < property.arraySize; i++)
+                        {
+                            var prop = property.GetArrayElementAtIndex(i);
+                            prop.vector3Value =
+                                Handles.PositionHandle(prop.vector3Value, Quaternion.identity);
+                        }
+                    }
+                    else
+                    {
+                        Handles.Label(property.vector3Value, property.name);
+                        property.vector3Value = Handles.PositionHandle(property.vector3Value, Quaternion.identity);
+                    }
+
+                    obj.ApplyModifiedProperties();
+                }
+            }
+        }
+    }
+
+    public static System.Reflection.FieldInfo GetFieldViaPath(System.Type type, string path)
+    {
+        System.Type parentType = type;
+        System.Reflection.FieldInfo fi = type.GetField(path);
+        string[] perDot = path.Split('.');
+        foreach (string fieldName in perDot)
+        {
+            fi = parentType.GetField(fieldName);
+            if (fi != null)
+                parentType = fi.FieldType;
+            else
+                return null;
+        }
+
+        if (fi != null)
+            return fi;
+
+        return null;
+    }
+}
+#endif
