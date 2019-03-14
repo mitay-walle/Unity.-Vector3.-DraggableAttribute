@@ -3,26 +3,50 @@
 
 using System;
 using UnityEngine;
+using WebSocketSharp;
 #if UNITY_EDITOR
 using UnityEditor;
 
 #endif
 
-public class DraggableAttribute : PropertyAttribute
+public abstract class DraggableBehaviour : MonoBehaviour
 {
 }
 
+public class DraggableAttribute : PropertyAttribute
+{
+    public bool isLocal = false;
+    public float SnapValue = -1f;
+    public string SnapName;
+    
+    public DraggableAttribute(bool local = false, float snapValue = -1f)
+    {
+        SnapValue = snapValue;
+        isLocal = local;
+    }
+    
+    public DraggableAttribute(bool local = false, string snapName = default)
+    {
+        if (!snapName.IsNullOrEmpty())
+            SnapName = snapName;
+
+        isLocal = local;
+    }
+}
+
 #if UNITY_EDITOR
-[CustomEditor(typeof(MonoBehaviour), true)]
+[CustomEditor(typeof(DraggableBehaviour), true)]
 public class DraggablePointDrawer : Editor
 {
     private SerializedObject serObj;
     private Type targetType;
+    private Transform tr;
     
     private void OnEnable()
     {
         serObj = new SerializedObject(target); // unity hit an error if we use Editor's serialzedObject property
         targetType = serObj.targetObject.GetType();
+        tr = (serObj.targetObject as Component).transform;
     }
 
     private void OnSceneGUI()
@@ -53,21 +77,57 @@ public class DraggablePointDrawer : Editor
 
                 if (draggablePoints.Length > 0)
                 {
+                    var attr = draggablePoints[0] as DraggableAttribute;
+
+                    var snapVal = -1f;
+                    
+                    if (attr.SnapValue > -1)
+                    {
+                        snapVal = attr.SnapValue;
+                    }
+                    else if (!attr.SnapName.IsNullOrEmpty())
+                    {
+                        snapVal = serObj.FindProperty(attr.SnapName).floatValue;
+                    }
+
+                    
                     if (property.isArray)
                     {
                         for (int i = 0; i < property.arraySize; i++)
                         {
                             var prop = property.GetArrayElementAtIndex(i);
-                            prop.vector3Value =
-                                Handles.PositionHandle(prop.vector3Value, Quaternion.identity);
+                            {
+                                var pos = prop.vector3Value;
+
+                                if (snapVal > -1)
+                                {
+                                    pos.x = Handles.SnapValue(pos.x,attr.SnapValue);
+                                    pos.y = Handles.SnapValue(pos.y,attr.SnapValue);
+                                    pos.z = Handles.SnapValue(pos.z,attr.SnapValue);
+                                }
+                                
+                                if (attr.isLocal) pos = tr.TransformPoint(pos);
+
+                                prop.vector3Value = Handles.PositionHandle(pos, Quaternion.identity);
+                            }
                         }
                     }
                     else
                     {
-                        Handles.Label(property.vector3Value, property.name);
-                        property.vector3Value = Handles.PositionHandle(property.vector3Value, Quaternion.identity);
-                    }
+                        var pos = property.vector3Value;
 
+                        
+                        if (snapVal > -1)
+                        {
+                            pos.x = Handles.SnapValue(pos.x,attr.SnapValue);
+                            pos.y = Handles.SnapValue(pos.y,attr.SnapValue);
+                            pos.z = Handles.SnapValue(pos.z,attr.SnapValue);
+                        }
+                        
+                        if (attr.isLocal) pos = tr.TransformPoint(pos);
+
+                        property.vector3Value = Handles.PositionHandle(pos, Quaternion.identity);
+                    }
                 }
             }
         }
@@ -76,6 +136,8 @@ public class DraggablePointDrawer : Editor
             serObj.ApplyModifiedProperties();
     }
 
+
+    
     public static System.Reflection.FieldInfo GetFieldViaPath(Type type, string path)
     {
         var parentType = type;
