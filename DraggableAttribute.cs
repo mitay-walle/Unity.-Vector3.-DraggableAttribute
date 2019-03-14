@@ -47,9 +47,6 @@ public class DraggablePointDrawer : Editor
     private Type targetType;
     private Transform tr;
 
-    private List<SerializedProperty> props = new List<SerializedProperty>();
-    private List<Vector3> values = new List<Vector3>();
-    bool needApply = false;
     
     public virtual void OnEnable()
     {
@@ -60,14 +57,12 @@ public class DraggablePointDrawer : Editor
     public virtual void OnSceneGUI()
     {
         var serObj = new SerializedObject(target);
-
         serObj.Update();
         
+        bool needApply = false;
+
         var property = serObj.GetIterator();
 
-        props.Clear();
-        values.Clear();
-        
         while (property.Next(true))
         {
             var isArray = false;
@@ -127,9 +122,6 @@ public class DraggablePointDrawer : Editor
                                 if (isSnapping) pos = Snap(pos, snapVal);
                                 prop.vector3Value = pos = Handles.PositionHandle(pos, rot);
                             }
-                            
-                            props.Add(prop);
-                            values.Add(pos);
                         }
                     }
                     else
@@ -151,9 +143,6 @@ public class DraggablePointDrawer : Editor
                             if (isSnapping) pos = Snap(pos, snapVal);
                             property.vector3Value =pos = Handles.PositionHandle(pos, rot);
                         }
-                        
-                        props.Add(property);
-                        values.Add(pos);
                     }
                 }
             }
