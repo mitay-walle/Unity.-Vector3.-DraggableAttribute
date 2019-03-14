@@ -44,9 +44,19 @@ public class DraggablePointDrawer : Editor
 
     private void OnEnable()
     {
-        serObj = new SerializedObject(target); // unity hit an error if we use Editor's serialzedObject property
         targetType = serObj.targetObject.GetType();
         tr = (serObj.targetObject as Component).transform;
+    }
+
+    public override void OnInspectorGUI()
+    {
+        EditorGUI.BeginChangeCheck();
+        serializedObject.Update();
+        
+        base.OnInspectorGUI();
+        serObj = new SerializedObject(target); // unity hit an error if we use Editor's serialzedObject property
+
+        if (EditorGUI.EndChangeCheck()) serializedObject.ApplyModifiedProperties();
     }
 
     private void OnSceneGUI()
