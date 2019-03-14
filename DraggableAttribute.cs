@@ -41,7 +41,7 @@ public class DraggableAttribute : PropertyAttribute
 }
 
 #if UNITY_EDITOR
-[CustomEditor(typeof(DraggableBehaviour), true)]
+[CustomEditor(typeof(DraggableBehaviour), true),CanEditMultipleObjects]
 public class DraggablePointDrawer : Editor
 {
     private Type targetType;
@@ -51,19 +51,19 @@ public class DraggablePointDrawer : Editor
     private List<Vector3> values = new List<Vector3>();
     bool needApply = false;
     
-    private void OnEnable()
+    public virtual void OnEnable()
     {
         targetType = serializedObject.targetObject.GetType();
         tr = (serializedObject.targetObject as Component).transform;
     }
 
-    private void OnSceneGUI()
+    public virtual void OnSceneGUI()
     {
-        serializedObject.Update();
+        var serObj = new SerializedObject(target);
+
+        serObj.Update();
         
-        base.OnInspectorGUI();
-        
-        var property = serializedObject.GetIterator();
+        var property = serObj.GetIterator();
 
         props.Clear();
         values.Clear();
@@ -98,7 +98,7 @@ public class DraggablePointDrawer : Editor
                     }
                     else if (!attr.SnapName.IsNullOrEmpty())
                     {
-                        snapVal = serializedObject.FindProperty(attr.SnapName).floatValue;
+                        snapVal = serObj.FindProperty(attr.SnapName).floatValue;
                     }
 
                     var isSnapping = snapVal > 0f;
@@ -160,7 +160,7 @@ public class DraggablePointDrawer : Editor
         }
         
         if (needApply && SceneView.lastActiveSceneView == EditorWindow.focusedWindow)
-            serializedObject.ApplyModifiedProperties();
+            serObj.ApplyModifiedProperties();
     }
 
 
