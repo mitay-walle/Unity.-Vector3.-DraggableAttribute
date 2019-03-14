@@ -103,14 +103,9 @@ public class DraggablePointDrawer : Editor
                             {
                                 rot = tr.rotation;
                                 
-                                Debug.Log("before = "+pos);
-                                Debug.Log("after = "+ Snap(pos, snapVal));
                                 pos = tr.TransformPoint(isSnapping ? Snap(pos, snapVal) : pos); // global snapped
                                 
-                                
-                                
                                 pos = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot)); // local UNsnapped
-                                Debug.Log(pos);
                                 prop.vector3Value = isSnapping ? Snap(pos, snapVal) : pos;
                             }
                             else
@@ -128,8 +123,11 @@ public class DraggablePointDrawer : Editor
                         if (attr.isLocal)
                         {
                             rot = tr.rotation;
-                            pos = tr.InverseTransformPoint(Handles.PositionHandle(tr.TransformPoint(pos), rot));
-                            property.vector3Value = isSnapping  ? Snap(pos, snapVal) : pos;
+                                
+                            pos = tr.TransformPoint(isSnapping ? Snap(pos, snapVal) : pos); // global snapped
+                                
+                            pos = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot)); // local UNsnapped
+                            property.vector3Value = isSnapping ? Snap(pos, snapVal) : pos;
                         }
                         else
                         {
