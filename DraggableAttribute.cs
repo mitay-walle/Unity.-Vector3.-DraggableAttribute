@@ -18,13 +18,13 @@ public class DraggableAttribute : PropertyAttribute
     public bool isLocal = false;
     public float SnapValue = -1f;
     public string SnapName;
-    
+
     public DraggableAttribute(bool local = false, float snapValue = -1f)
     {
         SnapValue = snapValue;
         isLocal = local;
     }
-    
+
     public DraggableAttribute(bool local = false, string snapName = default)
     {
         if (!snapName.IsNullOrEmpty())
@@ -41,7 +41,7 @@ public class DraggablePointDrawer : Editor
     private SerializedObject serObj;
     private Type targetType;
     private Transform tr;
-    
+
     private void OnEnable()
     {
         serObj = new SerializedObject(target); // unity hit an error if we use Editor's serialzedObject property
@@ -52,9 +52,9 @@ public class DraggablePointDrawer : Editor
     private void OnSceneGUI()
     {
         var property = serObj.GetIterator();
-        
+
         var needApply = false;
-        
+
         while (property.Next(true))
         {
             var isArray = false;
@@ -65,7 +65,7 @@ public class DraggablePointDrawer : Editor
             if (property.propertyType == SerializedPropertyType.Vector3 || isArray)
             {
                 needApply = true;
-                
+
                 var field = GetFieldViaPath(targetType, property.propertyPath);
 
                 if (field == null) continue;
@@ -77,7 +77,7 @@ public class DraggablePointDrawer : Editor
                     var attr = draggablePoints[0] as DraggableAttribute;
 
                     var snapVal = -1f;
-                    
+
                     if (attr.SnapValue > -1)
                     {
                         snapVal = attr.SnapValue;
@@ -87,26 +87,35 @@ public class DraggablePointDrawer : Editor
                         snapVal = serObj.FindProperty(attr.SnapName).floatValue;
                     }
 
-                    
+                    var isSnapping = snapVal > -1f;
+
                     if (property.isArray)
                     {
                         for (int i = 0; i < property.arraySize; i++)
                         {
                             var prop = property.GetArrayElementAtIndex(i);
-                            
-                            var pos = prop.vector3Value;
+
+                            var pos = prop.vector3Value; // local
                             var rot = Quaternion.identity;
-                            
-                            if (snapVal > -1) pos = Snap(pos,snapVal);
+
 
                             if (attr.isLocal)
                             {
-                                pos = tr.TransformPoint(pos);
                                 rot = tr.rotation;
-                                prop.vector3Value = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot));
+                                
+                                Debug.Log("before = "+pos);
+                                Debug.Log("after = "+ Snap(pos, snapVal));
+                                pos = tr.TransformPoint(isSnapping ? Snap(pos, snapVal) : pos); // global snapped
+                                
+                                
+                                
+                                pos = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot)); // local UNsnapped
+                                Debug.Log(pos);
+                                prop.vector3Value = isSnapping ? Snap(pos, snapVal) : pos;
                             }
                             else
                             {
+                                if (isSnapping) pos = Snap(pos, snapVal);
                                 prop.vector3Value = Handles.PositionHandle(pos, rot);
                             }
                         }
@@ -115,17 +124,16 @@ public class DraggablePointDrawer : Editor
                     {
                         var pos = property.vector3Value;
                         var rot = Quaternion.identity;
-                        
-                        if (snapVal > -1) pos = Snap(pos,snapVal);
 
                         if (attr.isLocal)
                         {
-                            pos = tr.TransformPoint(pos);
                             rot = tr.rotation;
-                            property.vector3Value = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot));
+                            pos = tr.InverseTransformPoint(Handles.PositionHandle(tr.TransformPoint(pos), rot));
+                            property.vector3Value = isSnapping  ? Snap(pos, snapVal) : pos;
                         }
                         else
                         {
+                            if (isSnapping) pos = Snap(pos, snapVal);
                             property.vector3Value = Handles.PositionHandle(pos, rot);
                         }
                     }
@@ -138,22 +146,25 @@ public class DraggablePointDrawer : Editor
     }
 
 
-    public static Vector3 Snap(Vector3 pos,float snapValue)
+    public static Vector3 Snap(Vector3 pos, float snapValue)
     {
-        pos.x = Handles.SnapValue(pos.x,snapValue);
-        pos.y = Handles.SnapValue(pos.y,snapValue);
-        pos.z = Handles.SnapValue(pos.z,snapValue);
+        pos.x = Snap(pos.x, snapValue);
+        pos.y = Snap(pos.y, snapValue);
+        pos.z = Snap(pos.z, snapValue);
         return pos;
     }
+    public static float Snap(float value,float snap)
+    {
+        return Mathf.Round(value / snap) * snap;
+    }
 
-    
     public static System.Reflection.FieldInfo GetFieldViaPath(Type type, string path)
     {
         var parentType = type;
         var fi = type.GetField(path);
-        
+
         var perDot = path.Split('.');
-        
+
         foreach (var fieldName in perDot)
         {
             fi = parentType.GetField(fieldName);
