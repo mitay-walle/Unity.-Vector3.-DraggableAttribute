@@ -68,10 +68,7 @@ public class DraggablePointDrawer : Editor
                 
                 var field = GetFieldViaPath(targetType, property.propertyPath);
 
-                if (field == null)
-                {
-                    continue;
-                }
+                if (field == null) continue;
 
                 var draggablePoints = field.GetCustomAttributes(typeof(DraggableAttribute), false);
 
@@ -96,37 +93,41 @@ public class DraggablePointDrawer : Editor
                         for (int i = 0; i < property.arraySize; i++)
                         {
                             var prop = property.GetArrayElementAtIndex(i);
+                            
+                            var pos = prop.vector3Value;
+                            var rot = Quaternion.identity;
+                            
+                            if (snapVal > -1) pos = Snap(pos,snapVal);
+
+                            if (attr.isLocal)
                             {
-                                var pos = prop.vector3Value;
-
-                                if (snapVal > -1)
-                                {
-                                    pos.x = Handles.SnapValue(pos.x,snapVal);
-                                    pos.y = Handles.SnapValue(pos.y,snapVal);
-                                    pos.z = Handles.SnapValue(pos.z,snapVal);
-                                }
-                                
-                                if (attr.isLocal) pos = tr.TransformPoint(pos);
-
-                                prop.vector3Value = Handles.PositionHandle(pos, Quaternion.identity);
+                                pos = tr.TransformPoint(pos);
+                                rot = tr.rotation;
+                                prop.vector3Value = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot));
+                            }
+                            else
+                            {
+                                prop.vector3Value = Handles.PositionHandle(pos, rot);
                             }
                         }
                     }
                     else
                     {
                         var pos = property.vector3Value;
-
+                        var rot = Quaternion.identity;
                         
-                        if (snapVal > -1)
+                        if (snapVal > -1) pos = Snap(pos,snapVal);
+
+                        if (attr.isLocal)
                         {
-                            pos.x = Handles.SnapValue(pos.x,snapVal);
-                            pos.y = Handles.SnapValue(pos.y,snapVal);
-                            pos.z = Handles.SnapValue(pos.z,snapVal);
+                            pos = tr.TransformPoint(pos);
+                            rot = tr.rotation;
+                            property.vector3Value = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot));
                         }
-                        
-                        if (attr.isLocal) pos = tr.TransformPoint(pos);
-
-                        property.vector3Value = Handles.PositionHandle(pos, Quaternion.identity);
+                        else
+                        {
+                            property.vector3Value = Handles.PositionHandle(pos, rot);
+                        }
                     }
                 }
             }
@@ -136,6 +137,14 @@ public class DraggablePointDrawer : Editor
             serObj.ApplyModifiedProperties();
     }
 
+
+    public static Vector3 Snap(Vector3 pos,float snapValue)
+    {
+        pos.x = Handles.SnapValue(pos.x,snapValue);
+        pos.y = Handles.SnapValue(pos.y,snapValue);
+        pos.z = Handles.SnapValue(pos.z,snapValue);
+        return pos;
+    }
 
     
     public static System.Reflection.FieldInfo GetFieldViaPath(Type type, string path)
