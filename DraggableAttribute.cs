@@ -2,6 +2,7 @@
 
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using WebSocketSharp;
 #if UNITY_EDITOR
@@ -19,7 +20,7 @@ public class DraggableAttribute : PropertyAttribute
     public float SnapValue = -1f;
     public string SnapName;
 
-    public DraggableAttribute(bool local = false, float snapValue = -1f)
+    public DraggableAttribute(bool local = false, float snapValue = 0f)
     {
         SnapValue = snapValue;
         isLocal = local;
@@ -38,33 +39,47 @@ public class DraggableAttribute : PropertyAttribute
 [CustomEditor(typeof(DraggableBehaviour), true)]
 public class DraggablePointDrawer : Editor
 {
-    private SerializedObject serObj;
     private Type targetType;
     private Transform tr;
 
+    private List<SerializedProperty> props = new List<SerializedProperty>();
+    private List<Vector3> values = new List<Vector3>();
+    bool needApply = false;
+    
     private void OnEnable()
     {
-        targetType = serObj.targetObject.GetType();
-        tr = (serObj.targetObject as Component).transform;
+        targetType = serializedObject.targetObject.GetType();
+        tr = (serializedObject.targetObject as Component).transform;
     }
 
     public override void OnInspectorGUI()
     {
-        EditorGUI.BeginChangeCheck();
         serializedObject.Update();
         
         base.OnInspectorGUI();
-        serObj = new SerializedObject(target); // unity hit an error if we use Editor's serialzedObject property
 
-        if (EditorGUI.EndChangeCheck()) serializedObject.ApplyModifiedProperties();
+        var length = props.Count;
+        
+        if (needApply)
+            for (int i = 0; i < length; i++)
+                if (props[i] != null) props[i].vector3Value = values[i];
+        
+        serializedObject.ApplyModifiedProperties();
     }
 
+    
+    
     private void OnSceneGUI()
     {
-        var property = serObj.GetIterator();
+        serializedObject.Update();
+        
+        base.OnInspectorGUI();
+        
+        var property = serializedObject.GetIterator();
 
-        var needApply = false;
-
+        props.Clear();
+        values.Clear();
+        
         while (property.Next(true))
         {
             var isArray = false;
@@ -74,7 +89,6 @@ public class DraggablePointDrawer : Editor
 
             if (property.propertyType == SerializedPropertyType.Vector3 || isArray)
             {
-                needApply = true;
 
                 var field = GetFieldViaPath(targetType, property.propertyPath);
 
@@ -84,21 +98,24 @@ public class DraggablePointDrawer : Editor
 
                 if (draggablePoints.Length > 0)
                 {
+                    needApply = true;
+                    
                     var attr = draggablePoints[0] as DraggableAttribute;
 
-                    var snapVal = -1f;
+                    var snapVal = 0f;
 
-                    if (attr.SnapValue > -1)
+                    if (attr.SnapValue > 0f)
                     {
                         snapVal = attr.SnapValue;
                     }
                     else if (!attr.SnapName.IsNullOrEmpty())
                     {
-                        snapVal = serObj.FindProperty(attr.SnapName).floatValue;
+                        snapVal = serializedObject.FindProperty(attr.SnapName).floatValue;
                     }
 
-                    var isSnapping = snapVal > -1f;
+                    var isSnapping = snapVal > 0f;
 
+                    
                     if (property.isArray)
                     {
                         for (int i = 0; i < property.arraySize; i++)
@@ -108,7 +125,6 @@ public class DraggablePointDrawer : Editor
                             var pos = prop.vector3Value; // local
                             var rot = Quaternion.identity;
 
-
                             if (attr.isLocal)
                             {
                                 rot = tr.rotation;
@@ -116,13 +132,16 @@ public class DraggablePointDrawer : Editor
                                 pos = tr.TransformPoint(isSnapping ? Snap(pos, snapVal) : pos); // global snapped
                                 
                                 pos = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot)); // local UNsnapped
-                                prop.vector3Value = isSnapping ? Snap(pos, snapVal) : pos;
+                                prop.vector3Value = pos = isSnapping ? Snap(pos, snapVal) : pos;
                             }
                             else
                             {
                                 if (isSnapping) pos = Snap(pos, snapVal);
-                                prop.vector3Value = Handles.PositionHandle(pos, rot);
+                                prop.vector3Value = pos = Handles.PositionHandle(pos, rot);
                             }
+                            
+                            props.Add(prop);
+                            values.Add(pos);
                         }
                     }
                     else
@@ -137,20 +156,23 @@ public class DraggablePointDrawer : Editor
                             pos = tr.TransformPoint(isSnapping ? Snap(pos, snapVal) : pos); // global snapped
                                 
                             pos = tr.InverseTransformPoint(Handles.PositionHandle(pos, rot)); // local UNsnapped
-                            property.vector3Value = isSnapping ? Snap(pos, snapVal) : pos;
+                            property.vector3Value = pos = isSnapping ? Snap(pos, snapVal) : pos;
                         }
                         else
                         {
                             if (isSnapping) pos = Snap(pos, snapVal);
-                            property.vector3Value = Handles.PositionHandle(pos, rot);
+                            property.vector3Value =pos = Handles.PositionHandle(pos, rot);
                         }
+                        
+                        props.Add(property);
+                        values.Add(pos);
                     }
                 }
             }
         }
-
+        
         if (needApply)
-            serObj.ApplyModifiedProperties();
+            serializedObject.ApplyModifiedProperties();
     }
 
 
