@@ -101,9 +101,9 @@ public class DraggablePointDrawer : Editor
 
                                 if (snapVal > -1)
                                 {
-                                    pos.x = Handles.SnapValue(pos.x,attr.SnapValue);
-                                    pos.y = Handles.SnapValue(pos.y,attr.SnapValue);
-                                    pos.z = Handles.SnapValue(pos.z,attr.SnapValue);
+                                    pos.x = Handles.SnapValue(pos.x,snapVal);
+                                    pos.y = Handles.SnapValue(pos.y,snapVal);
+                                    pos.z = Handles.SnapValue(pos.z,snapVal);
                                 }
                                 
                                 if (attr.isLocal) pos = tr.TransformPoint(pos);
@@ -119,9 +119,9 @@ public class DraggablePointDrawer : Editor
                         
                         if (snapVal > -1)
                         {
-                            pos.x = Handles.SnapValue(pos.x,attr.SnapValue);
-                            pos.y = Handles.SnapValue(pos.y,attr.SnapValue);
-                            pos.z = Handles.SnapValue(pos.z,attr.SnapValue);
+                            pos.x = Handles.SnapValue(pos.x,snapVal);
+                            pos.y = Handles.SnapValue(pos.y,snapVal);
+                            pos.z = Handles.SnapValue(pos.z,snapVal);
                         }
                         
                         if (attr.isLocal) pos = tr.TransformPoint(pos);
