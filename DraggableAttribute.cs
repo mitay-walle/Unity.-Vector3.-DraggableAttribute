@@ -20,6 +20,11 @@ public class DraggableAttribute : PropertyAttribute
     public float SnapValue = -1f;
     public string SnapName;
 
+    public DraggableAttribute(bool local = false)
+    {
+        isLocal = local;
+    }
+    
     public DraggableAttribute(bool local = false, float snapValue = 0f)
     {
         SnapValue = snapValue;
@@ -52,23 +57,6 @@ public class DraggablePointDrawer : Editor
         tr = (serializedObject.targetObject as Component).transform;
     }
 
-    public override void OnInspectorGUI()
-    {
-        serializedObject.Update();
-        
-        base.OnInspectorGUI();
-
-        var length = props.Count;
-        
-        if (needApply)
-            for (int i = 0; i < length; i++)
-                if (props[i] != null) props[i].vector3Value = values[i];
-        
-        serializedObject.ApplyModifiedProperties();
-    }
-
-    
-    
     private void OnSceneGUI()
     {
         serializedObject.Update();
@@ -171,7 +159,7 @@ public class DraggablePointDrawer : Editor
             }
         }
         
-        if (needApply)
+        if (needApply && SceneView.lastActiveSceneView == EditorWindow.focusedWindow)
             serializedObject.ApplyModifiedProperties();
     }
 
