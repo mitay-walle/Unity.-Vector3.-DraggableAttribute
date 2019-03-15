@@ -47,15 +47,23 @@ public class DraggablePointDrawer : Editor
     private Type targetType;
     private Transform tr;
 
+    private bool DrawHandles;
+
+    private Component myTarget;
     
     public virtual void OnEnable()
     {
         targetType = serializedObject.targetObject.GetType();
         tr = (serializedObject.targetObject as Component).transform;
+        DrawHandles = true;
+        myTarget = target as Component;
     }
 
     public virtual void OnSceneGUI()
     {
+        if (!UnityEditorInternal.InternalEditorUtility.GetIsInspectorExpanded(myTarget)) return;
+        
+        
         var serObj = new SerializedObject(target);
         serObj.Update();
         
