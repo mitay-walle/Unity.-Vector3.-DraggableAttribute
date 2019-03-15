@@ -1,8 +1,5 @@
 // based on: https://medium.com/@ProGM/show-a-draggable-point-into-the-scene-linked-to-a-vector3-field-using-the-handle-api-in-unity-bffc1a98271d
-
-
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using WebSocketSharp;
 #if UNITY_EDITOR
